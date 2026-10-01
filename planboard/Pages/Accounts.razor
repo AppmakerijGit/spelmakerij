@@ -234,11 +234,11 @@
 
     private static Dictionary<string, bool[]> DefaultSlotAvailability() => new()
     {
-        ["monday"] = [true, true, true, true],
-        ["tuesday"] = [true, true, true, true],
-        ["wednesday"] = [true, true, true, true],
-        ["thursday"] = [true, true, true, true],
-        ["friday"] = [true, true, true, true],
+        ["monday"] = [false, false, false, false],
+        ["tuesday"] = [false, false, false, false],
+        ["wednesday"] = [false, false, false, false],
+        ["thursday"] = [false, false, false, false],
+        ["friday"] = [false, false, false, false],
     };
 
     private Account? _selectedAccount => _accounts.FirstOrDefault(a => a.Id == _selectedId);
@@ -290,6 +290,7 @@
             OnConfirm: async name =>
             {
                 if (string.IsNullOrWhiteSpace(name)) { Toast.Show("Vul een naam in"); return; }
+                if (_accounts.Any(Account a => a.Username == name)) {Toast.Show("Een account met deze naam bestaat al"); return; }
                 if (string.IsNullOrWhiteSpace(_newPassword)) { Toast.Show("Vul een wachtwoord in"); return; }
                 var initials = MakeInitials(name);
                 var account = new Account { Name = name, Username = name, Initials = initials, Role = _newRole, Password = _newPassword };
