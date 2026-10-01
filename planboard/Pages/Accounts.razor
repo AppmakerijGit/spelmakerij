@@ -290,6 +290,7 @@
             OnConfirm: async name =>
             {
                 if (string.IsNullOrWhiteSpace(name)) { Toast.Show("Vul een naam in"); return; }
+                 if (_accounts.Any( a => a.Username == name)) { Toast.Show("Account met deze naam bestaat al"); return; }
                 if (string.IsNullOrWhiteSpace(_newPassword)) { Toast.Show("Vul een wachtwoord in"); return; }
                 var initials = MakeInitials(name);
                 var account = new Account { Name = name, Username = name, Initials = initials, Role = _newRole, Password = _newPassword };
