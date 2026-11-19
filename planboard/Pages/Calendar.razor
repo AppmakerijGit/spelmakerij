@@ -122,14 +122,28 @@
 
         <div class="agenda-body">
             <aside class="expected-panel" aria-label="Verwachte deelnemers">
-                <div class="expected-panel-title">
-                    Verwachte deelnemers
-                    @if (_activeSlot != null)
-                    {
-                        <span class="active-slot-indicator">(@_slotTimes[_activeSlot.Value].PeriodLabel)</span>
-                    }
+                <div class="hide-div-title">
+                    <span>Verwachte aanwezigen</span>
+                    <button type="button" class="hide-show-button" @onclick="() => {_hideExpected = !_hideExpected;}" @onclick:stopPropagation>
+                        @if (_hideExpected)
+                        {
+                            <span class="hide-button" role="img" aria-label="Shown"></span>
+                        }
+                        else
+                        {
+                            <span class="show-button" role="img" aria-label="Hidden"></span>
+                        }
+                    </button>
                 </div>
-                <section class="expected-location">
+                <div class="bs-divider"></div>
+                <section class="expected-location @(_hideExpected ? "hidden" : "")">
+                    <div class="expected-panel-title">
+                        Verwachte deelnemers
+                        @if (_activeSlot != null)
+                        {
+                            <span class="active-slot-indicator">(@_slotTimes[_activeSlot.Value].PeriodLabel)</span>
+                        }
+                    </div>
                     <div class="expected-list">
                         @foreach (var participant in ExpectedParticipants)
                         {
@@ -152,8 +166,13 @@
                     </div>
                 </section>
 
-                <section class="expected-location">
-                    <div class="expected-panel-title">Verwachte begeleiders</div>
+                <section class="expected-location @(_hideExpected ? "hidden" : "")">
+                    <div class="expected-panel-title">
+                        Verwachte begeleiders
+                        @if (_activeSlot != null)
+                        {
+                            <span class="active-slot-indicator">(@_slotTimes[_activeSlot.Value].PeriodLabel)</span>
+                        }</div>
                     <div class="expected-list">
                         @foreach (var supervisor in AvailableSupervisors)
                         {
@@ -175,7 +194,6 @@
                         }
                     </div>
                 </section>
-
             </aside>
 
             <div class="agenda-grid-wrap">
@@ -408,6 +426,9 @@
 </div>
 
 @code {
+    private bool _hideExpected;
+    private bool _hideGames;
+    private bool _hideLocations;
     private List<SlotTime> _slotTimes = [];
     private List<SlotTime> _savedSlotTimes = [];
     private bool _isTimeEditMode;
@@ -672,7 +693,13 @@
             Nav.NavigateTo("/dashboard");
             return;
         }
-
+        bool isNarrow = await JS.InvokeAsync<bool>("eval", "window.matchMedia('(max-width: 900px) and (max-aspect-ratio: 1/1.25)').matches");
+        if (isNarrow)
+        {
+            _hideExpected = true;
+            _hideGames = true;
+            _hideLocations = true;
+        }
         _slotTimes = await SlotTimesService.GetSlotTimes();
         _savedSlotTimes = _slotTimes.Select(s => new SlotTime { Id = s.Id, SortOrder = s.SortOrder, TimeRange = s.TimeRange, PeriodLabel = s.PeriodLabel }).ToList();
         await LoadCards();
@@ -1371,10 +1398,21 @@
         await SaveSlots();
     }
 
+    private void SortBuilderLists()
+    {
+        if (_builderData is null)
+            return;
+
+        _builderData.Spellen = _builderData.Spellen
+            .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
     private async Task DeleteBuilderItem(string category, int id)
     {
         await Builder.DeleteItem(category, id);
         _builderData = await Builder.GetBuilderData();
+        SortBuilderLists();
         _locationOrder = BuildLocationOrder();
         StateHasChanged();
     }
@@ -1390,6 +1428,7 @@
                 if (string.IsNullOrWhiteSpace(name)) { Toast.Show("Vul een naam in"); return; }
                 await Builder.AddItem(category, name);
                 _builderData = await Builder.GetBuilderData();
+                SortBuilderLists();
                 _locationOrder = BuildLocationOrder();
                 Modal.Close();
                 Toast.Show("Item toegevoegd");
@@ -1741,10 +1780,34 @@
             <section class="builder-section">
                 <div class="bs-header">
                     <span class="bs-title">@label</span>
+                    @if (category=="locaties")
+                    {
+                        <button type="button" class="hide-show-button" @onclick="() => {_hideLocations = !_hideLocations;}" @onclick:stopPropagation>
+                            @if (_hideLocations)
+                            {
+                                <span class="hide-button" role="img" aria-label="Shown"></span>
+                            }
+                            else
+                            {
+                                <span class="show-button" role="img" aria-label="Hidden"></span>
+                            }
+                        </button>
+                    } else if (category=="spellen") {
+                        <button type="button" class="hide-show-button" @onclick="() => {_hideGames = !_hideGames;}" @onclick:stopPropagation>
+                            @if (_hideGames)
+                            {
+                                <span class="hide-button" role="img" aria-label="Shown"></span>
+                            }
+                            else
+                            {
+                                <span class="show-button" role="img" aria-label="Hidden"></span>
+                            }
+                        </button>
+                    }
                     <button class="bs-add" type="button" @onclick="() => AddBuilderItem(category)">+</button>
                 </div>
                 <div class="bs-divider"></div>
-                <div class="bs-tags">
+                <div class="card @((category == "spellen" ? _hideGames : category == "locaties" ? _hideLocations : false) ? "hidden" : "")">
                     @foreach (var item in items)
                     {
                         var it = item;
