@@ -9,7 +9,7 @@
             <h3 id="modalTitle">@opts.Title</h3>
             @if (!opts.HideInput)
             {
-                <input class="modal-input" @bind="_value" placeholder="@opts.Placeholder" />
+                <input @ref="_inputRef" class="modal-input" @bind="_value" @bind:event="oninput" @onkeydown="HandleKeyDown" placeholder="@opts.Placeholder" />
             }
             @if (opts.Extra is not null)
             {
@@ -31,7 +31,22 @@
 }
 
 @code {
+    private ElementReference _inputRef;
     private string _value = "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (ModalService.IsOpen && ModalService.Options is not null && !ModalService.Options.HideInput)
+        {
+            await _inputRef.FocusAsync();
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await Confirm();
+    }
 
     protected override void OnParametersSet()
     {

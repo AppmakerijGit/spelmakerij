@@ -9,7 +9,7 @@
 <PageTitle>Accounts</PageTitle>
 
 <div class="screen active">
-    <div class="accounts-wrap">
+    <div class="accounts-wrap @(_selectedAccount is not null ? "detail-open" : "list-open")">
         <!-- Left panel -->
         <div class="accounts-left">
             <div class="accounts-search-wrap">
@@ -32,32 +32,39 @@
             </div>
             <button class="new-account-btn" type="button" @onclick="OpenNewAccountModal">+ Nieuw account</button>
             <div class="accounts-grid">
-                @if (FilteredAccounts.Any())
+                
+                @if (GroupedFilteredAccounts.Any())
                 {
-                    @foreach (var account in FilteredAccounts)
+                    @foreach (var group in GroupedFilteredAccounts)
                     {
-                        var acc = account;
-                        <div class="account-card @(_selectedId == acc.Id ? "selected" : "")"
-                             @onclick="() => SelectAccount(acc.Id)">
-                            <div class="account-avatar">@acc.Initials</div>
-                            <div class="account-info">
-                                <div class="account-name">@acc.Name</div>
-                                <span class="account-role-tag @acc.Role">@acc.Role</span>
-                            </div>
-                            <div class="account-status @(acc.Active ? "active" : "inactive")"></div>
-                            <div class="account-actions">
-                                <button class="acc-btn delete" type="button"
-                                        title="Verwijder account"
-                                        @onclick="() => DeleteAccount(acc.Id)"
-                                        @onclick:stopPropagation>
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                        <polyline points="3 6 5 6 21 6"></polyline>
-                                        <path d="M19 6l-1 14H6L5 6"></path>
-                                        <path d="M10 11v6"></path><path d="M14 11v6"></path>
-                                        <path d="M9 6V4h6v2"></path>
-                                    </svg>
-                                </button>
-                            </div>
+                        <div class="accounts-group">
+                            <div class="accounts-group-header">@group.Key</div>
+                            @foreach (var account in group.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase))
+                            {
+                                var acc = account;
+                                <div class="account-card @(_selectedId == acc.Id ? "selected" : "")"
+                                     @onclick="() => SelectAccount(acc.Id)">
+                                    <div class="account-avatar">@acc.Initials</div>
+                                    <div class="account-info">
+                                        <div class="account-name">@acc.Name</div>
+                                        <span class="account-role-tag @acc.Role">@acc.Role</span>
+                                    </div>
+                                    <div class="account-status @(acc.Active ? "active" : "inactive")"></div>
+                                    <div class="account-actions">
+                                        <button class="acc-btn delete" type="button"
+                                                title="Verwijder account"
+                                                @onclick="() => DeleteAccount(acc.Id)"
+                                                @onclick:stopPropagation>
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                                <polyline points="3 6 5 6 21 6"></polyline>
+                                                <path d="M19 6l-1 14H6L5 6"></path>
+                                                <path d="M10 11v6"></path><path d="M14 11v6"></path>
+                                                <path d="M9 6V4h6v2"></path>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            }
                         </div>
                     }
                 }
@@ -72,6 +79,7 @@
         <div class="account-detail @(_selectedAccount is not null ? "visible" : "")">
             @if (_selectedAccount is { } sel)
             {
+                <button class="account-detail-back" type="button" @onclick="DeselectAccount">← Terug</button>
                 <div class="detail-avatar">@sel.Initials</div>
                 <div class="detail-divider"></div>
                 <label class="detail-label">Naam</label>
@@ -243,9 +251,20 @@
 
     private Account? _selectedAccount => _accounts.FirstOrDefault(a => a.Id == _selectedId);
 
-    private IEnumerable<Account> FilteredAccounts => _accounts.Where(a =>
-        (_filter == "alle" || a.Role == _filter) &&
-        (string.IsNullOrEmpty(_search) || a.Name.Contains(_search, StringComparison.OrdinalIgnoreCase)));
+    private static string GetRoleGroup(string role) =>
+        role == "deelnemer" ? "Deelnemers" : "Begeleiders";
+
+    private IEnumerable<Account> FilteredAccounts => _accounts
+        .Where(a =>
+            (_filter == "alle" || a.Role == _filter) &&
+            (string.IsNullOrEmpty(_search) || a.Name.Contains(_search, StringComparison.OrdinalIgnoreCase)))
+        .OrderBy(a => a.Role == "deelnemer" ? 0 : 1)
+        .ThenBy(a => a.Name, StringComparer.InvariantCultureIgnoreCase);
+
+    private IEnumerable<IGrouping<string, Account>> GroupedFilteredAccounts =>
+        FilteredAccounts
+            .GroupBy(a => GetRoleGroup(a.Role))
+            .OrderBy(g => g.Key == "Begeleiders" ? 0 : 1);
 
     protected override async Task OnInitializedAsync()
     {
@@ -276,6 +295,17 @@
                     _editSlotAvailability[day] = [.. slots];
             }
         }
+    }
+
+    private void DeselectAccount()
+    {
+        _selectedId = null;
+        _editName = "";
+        _editRole = "deelnemer";
+        _editPassword = "";
+        _exclusivitySearch = "";
+        _locationRestrictionSearch = "";
+        _editSlotAvailability = DefaultSlotAvailability();
     }
 
     private void OpenNewAccountModal()

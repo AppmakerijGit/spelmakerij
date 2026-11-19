@@ -53,7 +53,7 @@ export async function removeExclusivity(userIdA, userIdB) {
 }
 
 export async function getAccounts() {
-  const [rows] = await pool.query(`SELECT ${SELECT_COLS} FROM users`);
+  const [rows] = await pool.query(`SELECT ${SELECT_COLS} FROM users ORDER BY name COLLATE utf8mb4_general_ci ASC`);
   const [exclusivityRows] = await pool.query(
     'SELECT user_id_a, user_id_b FROM user_exclusivities'
   );
